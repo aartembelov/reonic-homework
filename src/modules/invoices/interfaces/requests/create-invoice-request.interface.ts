@@ -3,7 +3,12 @@ export interface CreateInvoiceRequest {
 	invoiceNumber: string;
 	customerName: string;
 	customerEmail: string;
-	customerAddress?: {};
+	customerAddress?: {
+		street?: string;
+		city?: string;
+		postalCode?: string;
+		country?: string;
+	};
 	invoiceDate: string;
 	dueDate: string;
 	items: { description: string; quantity: number; unitPrice: number; total: number }[];

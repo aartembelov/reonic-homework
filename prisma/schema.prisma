@@ -59,13 +59,15 @@ model Address {
 }
 
 model InvoiceItem {
-  id          String  @id @default(uuid())
-  invoice     Invoice @relation(fields: [invoice_id], references: [id])
-  invoice_id  Int
+  id          String @id @default(uuid())
+  public_id   String @unique
   description String
   quantity    Float
   unitPrice   Float
   total       Float
+
+  invoice_id Int
+  invoice    Invoice @relation(fields: [invoice_id], references: [id])
 
   @@map("invoice_items")
 }
