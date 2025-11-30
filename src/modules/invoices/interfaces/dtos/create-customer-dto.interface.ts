@@ -4,7 +4,7 @@ export interface CreateCustomerDto {
 	address?: {
 		street?: string;
 		city?: string;
-		postal_code?: string;
+		postalCode?: string;
 		country?: string;
 	};
 }

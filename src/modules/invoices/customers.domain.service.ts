@@ -1,16 +1,16 @@
 import { Injectable } from "@nestjs/common";
-import { Customer } from "./interfaces/invoice.interface";
+import { Customer, CustomerAddress } from "./interfaces/invoice.interface";
 import { CreateCustomerDto } from "./interfaces/dtos/create-customer-dto.interface";
 
 @Injectable()
 export class CustomersDomainService {
-	fromCreateCustomerDto(customerDto: CreateCustomerDto): Omit<Customer, "id"> {
-		const address = customerDto.address
+	fromCreateCustomerDto(customerDto: CreateCustomerDto): Customer {
+		const address: CustomerAddress | undefined = customerDto.address
 			? {
 					publicId: this.generateCustomerAddressPublicId(),
 					street: customerDto.address.street,
 					city: customerDto.address.city,
-					postal_code: customerDto.address.postal_code,
+					postalCode: customerDto.address.postalCode,
 					country: customerDto.address.country,
 			  }
 			: undefined;
