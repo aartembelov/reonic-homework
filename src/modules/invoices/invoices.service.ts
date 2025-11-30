@@ -73,4 +73,25 @@ export class InvoicesService {
 			throw err instanceof CustomError ? err : new CustomError("Failed to get invoice");
 		}
 	}
+
+	async getByReferenceId(referenceId: string): Promise<{ invoice: Invoice; customer: Customer }> {
+		const method = "InvoicesService/getByReferenceId";
+		Logger.log(`${method} - start`);
+		Logger.verbose(`${method} - invoice reference id`, referenceId);
+
+		try {
+			const invoice = await this.invoicesStorage.getByReferenceId(referenceId);
+			if (!invoice) {
+				throw new CustomError("Invoice not found by reference id");
+			}
+
+			const customer = await this.customersService.getById(invoice.customerId);
+
+			Logger.log(`${method} - end`);
+			return { invoice, customer };
+		} catch (err) {
+			Logger.error(`${method} - failed to get invoice`, err instanceof Error ? err.message : err);
+			throw err instanceof CustomError ? err : new CustomError("Failed to get invoice");
+		}
+	}
 }

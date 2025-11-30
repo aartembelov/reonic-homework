@@ -32,6 +32,8 @@ model Invoice {
   customer Customer? @relation(fields: [customer_id], references: [id])
 
   @@map("invoices")
+
+  @@index([reference_id])
 }
 
 model Customer {

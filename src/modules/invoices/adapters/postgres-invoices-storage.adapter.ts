@@ -1,5 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { InvoicesStoragePort, InvoiceWithCustomerId } from "../ports/invoices-storage.port";
+import { InvoicesStoragePort } from "../ports/invoices-storage.port";
 import { Invoice, InvoiceItem, InvoiceStatus } from "../interfaces/invoice.interface";
 import { PrismaService } from "../../prisma/prisma.service";
 import { Invoice as DbInvoice, InvoiceItem as DbInvoiceItem, InvoiceStatus as DbInvoiceStatus } from "@prisma/client";
@@ -9,7 +9,7 @@ import { CustomError } from "../../errors/custom-error";
 export class PostgresInvoicesStorageAdapter implements InvoicesStoragePort {
 	constructor(private readonly prismaService: PrismaService) {}
 
-	async create(invoice: Invoice): Promise<InvoiceWithCustomerId> {
+	async create(invoice: Invoice): Promise<Invoice> {
 		const method = "PostgresInvoicesStorageAdapter/create";
 		Logger.log(`${method} - start`);
 
@@ -57,7 +57,7 @@ export class PostgresInvoicesStorageAdapter implements InvoicesStoragePort {
 		}
 	}
 
-	async getByPublicId(invoicePublicId: string): Promise<InvoiceWithCustomerId | null> {
+	async getByPublicId(invoicePublicId: string): Promise<Invoice | null> {
 		const method = "PostgresInvoicesStorageAdapter/getByPublicId";
 		Logger.log(`${method} - start`);
 		Logger.verbose(`${method} - fetch`);
@@ -78,7 +78,28 @@ export class PostgresInvoicesStorageAdapter implements InvoicesStoragePort {
 		return invoice;
 	}
 
-	private toDomain(dbInvoice: DbInvoice & { items: DbInvoiceItem[] }): InvoiceWithCustomerId {
+	async getByReferenceId(referenceId: string): Promise<Invoice | null> {
+		const method = "PostgresInvoicesStorageAdapter/getByPublicId";
+		Logger.log(`${method} - start`);
+		Logger.verbose(`${method} - fetch`);
+
+		const response = await this.prismaService.invoice.findFirst({
+			where: {
+				reference_id: referenceId,
+			},
+			include: {
+				customer: true,
+				items: true,
+			},
+		});
+
+		const invoice = response ? this.toDomain(response) : null;
+
+		Logger.log(`${method} - end`);
+		return invoice;
+	}
+
+	private toDomain(dbInvoice: DbInvoice & { items: DbInvoiceItem[] }): Invoice {
 		const dbStatusToDomainStatus: Record<DbInvoiceStatus, InvoiceStatus> = {
 			draft: InvoiceStatus.Draft,
 			sent: InvoiceStatus.Sent,

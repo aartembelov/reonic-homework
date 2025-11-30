@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Logger, Param, Post, UsePipes } from "@nestjs/common";
+import { Body, Controller, Get, Logger, Param, Post, Query, UsePipes } from "@nestjs/common";
 import { JsonSchemaValidationPipe } from "../../shared/pipes/json-schema-validation.pipe";
 import invoiceSchema from "../../../schema/invoice.schema.json";
 import { InvoicesService } from "./invoices.service";
@@ -54,6 +54,23 @@ export class InvoicesController {
 		}
 
 		const { invoice, customer } = await this.invoicesService.getByPublicId(publicId);
+
+		const invoiceResponse = this.fromDomain(invoice, customer);
+
+		Logger.log(`${method} - end`);
+		return invoiceResponse;
+	}
+
+	@Get()
+	async getByReferenceId(@Query("invoiceId") invoiceId?: string): Promise<InvoiceResponse> {
+		const method = "InvoicesController/getByReferenceId";
+		Logger.log(`${method} - start`);
+
+		if (!invoiceId) {
+			throw new CustomError("Invoice ID is not defined");
+		}
+
+		const { invoice, customer } = await this.invoicesService.getByReferenceId(invoiceId);
 
 		const invoiceResponse = this.fromDomain(invoice, customer);
 
