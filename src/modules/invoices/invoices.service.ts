@@ -3,7 +3,6 @@ import { InvoiceFilters, InvoicesStoragePort } from "./ports/invoices-storage.po
 import { Invoice } from "./interfaces/invoice.interface";
 import { CreateInvoiceDto } from "./interfaces/dtos/create-invoice-dto.interface";
 import { InvoicesDomainService } from "./invoices.domain.service";
-import { TransactionsService } from "../transaction/transactions.service";
 import { CustomError } from "../errors/custom-error";
 
 export const INVOICES_STORAGE_TOKEN = Symbol.for("INVOICES_STORAGE_TOKEN");
