@@ -11,6 +11,8 @@ import {
 	CustomerAddress as DbCustomerAddress,
 } from "@prisma/client";
 import { CustomError } from "../../errors/custom-error";
+import { Page } from "../../../shared/pagination/interfaces/page.interface";
+import { PaginationParameters } from "../../../shared/pagination/interfaces/pagination-parameters.interface";
 
 @Injectable()
 export class PostgresInvoicesStorageAdapter implements InvoicesStoragePort {
@@ -166,15 +168,23 @@ export class PostgresInvoicesStorageAdapter implements InvoicesStoragePort {
 
 	async getByCustomerName(
 		customerName: string,
-		filters?: InvoiceFilters,
-		transaction?: Prisma.TransactionClient
-	): Promise<Invoice[]> {
+		options: {
+			pagination: PaginationParameters;
+			filters?: InvoiceFilters;
+			transaction?: Prisma.TransactionClient;
+		}
+	): Promise<Page<Invoice>> {
 		const method = "PostgresInvoicesStorageAdapter/getByCustomerName";
 		Logger.log(`${method} - start`);
 		Logger.verbose(`${method} - get by customer name`, customerName);
+		const { pagination, filters, transaction } = options;
+
+		const { skip, take } = this.calculateSkipAndTake(pagination);
 
 		try {
 			const response = await (transaction ?? this.prismaService).invoice.findMany({
+				skip,
+				take,
 				where: {
 					customer: {
 						name: customerName,
@@ -201,19 +211,27 @@ export class PostgresInvoicesStorageAdapter implements InvoicesStoragePort {
 			});
 
 			Logger.log(`${method} - end`);
-			return invoices;
+			return { data: invoices, ...pagination };
 		} catch (err) {
 			Logger.error(`${method} - failed to get invoice`, err instanceof Error ? err.message : err);
 			throw new CustomError("Failed to get invoice");
 		}
 	}
 
-	async getWithFilters(filters: InvoiceFilters, transaction?: Prisma.TransactionClient): Promise<Invoice[]> {
+	async getWithFilters(
+		filters: InvoiceFilters,
+		options: { pagination: PaginationParameters; transaction?: Prisma.TransactionClient }
+	): Promise<Page<Invoice>> {
 		const method = "PostgresInvoicesStorageAdapter/getWithFilters";
 		Logger.log(`${method} - start`);
+		const { pagination, transaction } = options;
+
+		const { skip, take } = this.calculateSkipAndTake(pagination);
 
 		try {
 			const response = await (transaction ?? this.prismaService).invoice.findMany({
+				skip,
+				take,
 				where: {
 					due_date: this.getDueDateFilter(filters),
 					issue_date: this.getIssueDateFilter(filters),
@@ -237,7 +255,7 @@ export class PostgresInvoicesStorageAdapter implements InvoicesStoragePort {
 			});
 
 			Logger.log(`${method} - end`);
-			return invoices;
+			return { data: invoices, ...pagination };
 		} catch (err) {
 			Logger.error(`${method} - failed to get invoice`, err instanceof Error ? err.message : err);
 			throw new CustomError("Failed to get invoice");
@@ -255,6 +273,13 @@ export class PostgresInvoicesStorageAdapter implements InvoicesStoragePort {
 		if (filters?.dueDate) {
 			return filters?.dueDate;
 		}
+	}
+
+	private calculateSkipAndTake(pagination: PaginationParameters): { skip: number; take: number } {
+		const skip = pagination.page * pagination.limit;
+		const take = pagination.limit;
+
+		return { skip, take };
 	}
 
 	private getIssueDateFilter(filters: Pick<InvoiceFilters, "issueDate" | "issueDateFrom" | "issueDateTo"> | undefined) {

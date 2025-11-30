@@ -8,6 +8,8 @@ import { InvoiceResponse } from "./interfaces/responses/invoice-response.interfa
 import { Invoice } from "./interfaces/invoice.interface";
 import { CustomError } from "../errors/custom-error";
 import { InvoiceFilters } from "./ports/invoices-storage.port";
+import { Page } from "../../shared/pagination/interfaces/page.interface";
+import { PaginationParameters } from "../../shared/pagination/domain/pagination-parameters";
 
 @Controller({ path: ["invoices"] })
 export class InvoicesController {
@@ -70,8 +72,10 @@ export class InvoicesController {
 		@Query("invoiceDateFrom") invoiceDateFrom?: string,
 		@Query("invoiceDateTo") invoiceDateTo?: string,
 		@Query("dueDateFrom") dueDateFrom?: string,
-		@Query("dueDateTo") dueDateTo?: string
-	): Promise<InvoiceResponse | InvoiceResponse[]> {
+		@Query("dueDateTo") dueDateTo?: string,
+		@Query("page") page?: string,
+		@Query("limit") limit?: string
+	): Promise<InvoiceResponse | Page<InvoiceResponse>> {
 		const method = "InvoicesController/getByQuery";
 		Logger.log(`${method} - start`);
 		const filters = this.toInvoiceFilters({
@@ -83,16 +87,29 @@ export class InvoicesController {
 			invoiceDateTo,
 		});
 
-		let invoiceResponse: InvoiceResponse | InvoiceResponse[];
+		const pagination = new PaginationParameters({
+			page: page ? parseInt(page) : undefined,
+			limit: limit ? parseInt(limit) : undefined,
+		});
+
+		let invoiceResponse: InvoiceResponse | Page<InvoiceResponse>;
 		if (invoiceId) {
 			const invoice = await this.invoicesService.getByReferenceId(invoiceId);
 			invoiceResponse = this.fromDomain(invoice);
 		} else if (customerName) {
-			const results = await this.invoicesService.getByCustomerName(customerName, filters);
-			invoiceResponse = results.map((invoice) => this.fromDomain(invoice));
+			const results = await this.invoicesService.getByCustomerName(customerName, { filters, pagination });
+			invoiceResponse = {
+				page: results.page,
+				limit: results.limit,
+				data: results.data.map((invoice) => this.fromDomain(invoice)),
+			};
 		} else {
-			const results = await this.invoicesService.getWithFilters(filters);
-			invoiceResponse = results.map((invoice) => this.fromDomain(invoice));
+			const results = await this.invoicesService.getWithFilters(filters, { pagination });
+			invoiceResponse = {
+				page: results.page,
+				limit: results.limit,
+				data: results.data.map((invoice) => this.fromDomain(invoice)),
+			};
 		}
 
 		Logger.log(`${method} - end`);

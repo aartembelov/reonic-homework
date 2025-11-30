@@ -4,6 +4,9 @@ import { Invoice } from "./interfaces/invoice.interface";
 import { CreateInvoiceDto } from "./interfaces/dtos/create-invoice-dto.interface";
 import { InvoicesDomainService } from "./invoices.domain.service";
 import { CustomError } from "../errors/custom-error";
+import { PaginationParameters as IPaginationParameters } from "../../shared/pagination/interfaces/pagination-parameters.interface";
+import { Page } from "../../shared/pagination/interfaces/page.interface";
+import { PaginationParameters } from "../../shared/pagination/domain/pagination-parameters";
 
 export const INVOICES_STORAGE_TOKEN = Symbol.for("INVOICES_STORAGE_TOKEN");
 
@@ -70,9 +73,13 @@ export class InvoicesService {
 		}
 	}
 
-	async getByCustomerName(customerName: string, filters?: InvoiceFilters): Promise<Invoice[]> {
+	async getByCustomerName(
+		customerName: string,
+		options: { filters?: InvoiceFilters; pagination?: IPaginationParameters }
+	): Promise<Page<Invoice>> {
 		const method = "InvoicesService/getByCustomerName";
 		Logger.log(`${method} - start`);
+		const { filters, pagination } = options;
 
 		if (filters) {
 			const error = this.validateInvoiceFilters(filters);
@@ -81,8 +88,13 @@ export class InvoicesService {
 			}
 		}
 
+		const paginationParameters = new PaginationParameters(pagination);
+
 		try {
-			const invoices = await this.invoicesStorage.getByCustomerName(customerName, filters);
+			const invoices = await this.invoicesStorage.getByCustomerName(customerName, {
+				filters,
+				pagination: paginationParameters,
+			});
 
 			Logger.log(`${method} - end`);
 			return invoices;
@@ -92,19 +104,23 @@ export class InvoicesService {
 		}
 	}
 
-	async getWithFilters(filters: InvoiceFilters): Promise<Invoice[]> {
+	async getWithFilters(
+		filters: InvoiceFilters,
+		options: { pagination?: IPaginationParameters }
+	): Promise<Page<Invoice>> {
 		const method = "InvoicesService/getWithFilters";
 		Logger.log(`${method} - start`);
+		const { pagination } = options;
 
-		if (filters) {
-			const error = this.validateInvoiceFilters(filters);
-			if (error) {
-				throw error;
-			}
+		const error = this.validateInvoiceFilters(filters);
+		if (error) {
+			throw error;
 		}
 
+		const paginationParameters = new PaginationParameters(pagination);
+
 		try {
-			const invoices = await this.invoicesStorage.getWithFilters(filters);
+			const invoices = await this.invoicesStorage.getWithFilters(filters, { pagination: paginationParameters });
 
 			Logger.log(`${method} - end`);
 			return invoices;
