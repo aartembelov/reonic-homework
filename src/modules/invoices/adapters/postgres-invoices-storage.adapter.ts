@@ -133,7 +133,7 @@ export class PostgresInvoicesStorageAdapter implements InvoicesStoragePort {
 		Logger.verbose(`${method} - get by reference id`, referenceId);
 
 		try {
-			const response = await (transaction ?? this.prismaService).invoice.findFirst({
+			const response = await (transaction ?? this.prismaService).invoice.findUnique({
 				where: {
 					reference_id: referenceId,
 				},

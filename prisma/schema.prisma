@@ -16,7 +16,7 @@ datasource db {
 model Invoice {
   id           Int           @id @default(autoincrement())
   public_id    String        @unique
-  reference_id String
+  reference_id String        @unique
   number       String
   customer_id  Int
   issue_date   DateTime
