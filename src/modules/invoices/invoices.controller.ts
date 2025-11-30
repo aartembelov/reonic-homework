@@ -6,7 +6,6 @@ import { CreateInvoiceRequest } from "./interfaces/requests/create-invoice-reque
 import { CreateInvoiceDto } from "./interfaces/dtos/create-invoice-dto.interface";
 import { InvoiceResponse } from "./interfaces/responses/invoice-response.interface";
 import { Invoice } from "./interfaces/invoice.interface";
-import { Customer } from "../customers/interfaces/customer.interface";
 import { CustomError } from "../errors/custom-error";
 
 @Controller({ path: ["invoices"] })
@@ -36,9 +35,9 @@ export class InvoicesController {
 			status: createInvoiceRequest.status,
 		};
 
-		const { invoice, customer } = await this.invoicesService.create(invoiceDto);
+		const invoice = await this.invoicesService.create(invoiceDto);
 
-		const invoiceResponse = this.fromDomain(invoice, customer);
+		const invoiceResponse = this.fromDomain(invoice);
 
 		Logger.log(`${method} - end`);
 		return invoiceResponse;
@@ -53,32 +52,77 @@ export class InvoicesController {
 			throw new CustomError("Invoice ID is not defined");
 		}
 
-		const { invoice, customer } = await this.invoicesService.getByPublicId(publicId);
+		const invoice = await this.invoicesService.getByPublicId(publicId);
 
-		const invoiceResponse = this.fromDomain(invoice, customer);
+		const invoiceResponse = this.fromDomain(invoice);
 
 		Logger.log(`${method} - end`);
 		return invoiceResponse;
 	}
 
 	@Get()
-	async getByReferenceId(@Query("invoiceId") invoiceId?: string): Promise<InvoiceResponse> {
-		const method = "InvoicesController/getByReferenceId";
+	async getByQuery(
+		@Query("invoiceId") invoiceId?: string,
+		@Query("customerName") customerName?: string,
+		@Query("invoiceDate") invoiceDate?: string,
+		@Query("dueDate") dueDate?: string,
+		@Query("invoiceDateFrom") invoiceDateFrom?: string,
+		@Query("invoiceDateTo") invoiceDateTo?: string,
+		@Query("dueDateFrom") dueDateFrom?: string,
+		@Query("dueDateTo") dueDateTo?: string
+	): Promise<InvoiceResponse | InvoiceResponse[]> {
+		const method = "InvoicesController/getByQuery";
 		Logger.log(`${method} - start`);
+		const filters = { dueDate, invoiceDate, dueDateFrom, dueDateTo, invoiceDateFrom, invoiceDateTo };
 
-		if (!invoiceId) {
-			throw new CustomError("Invoice ID is not defined");
+		const error = this.validateQueryParameters(filters);
+		if (error) {
+			throw error;
 		}
 
-		const { invoice, customer } = await this.invoicesService.getByReferenceId(invoiceId);
-
-		const invoiceResponse = this.fromDomain(invoice, customer);
+		let invoiceResponse: InvoiceResponse | InvoiceResponse[];
+		if (invoiceId) {
+			const invoice = await this.invoicesService.getByReferenceId(invoiceId);
+			invoiceResponse = this.fromDomain(invoice);
+		} else if (customerName) {
+			const results = await this.invoicesService.getByCustomerName(customerName, filters);
+			invoiceResponse = results.map((invoice) => this.fromDomain(invoice));
+		} else {
+			throw new CustomError("Either invoiceId or customerName is required");
+		}
 
 		Logger.log(`${method} - end`);
 		return invoiceResponse;
 	}
 
-	private fromDomain(invoice: Invoice, customer: Customer): InvoiceResponse {
+	private validateQueryParameters(parameters: {
+		invoiceDate?: string;
+		invoiceDateFrom?: string;
+		invoiceDateTo?: string;
+		dueDate?: string;
+		dueDateFrom?: string;
+		dueDateTo?: string;
+	}): CustomError | void {
+		const { invoiceDate, invoiceDateFrom, invoiceDateTo, dueDate, dueDateFrom, dueDateTo } = parameters;
+
+		if (invoiceDate && (invoiceDateFrom || invoiceDateTo)) {
+			return new CustomError("Cannot use 'invoiceDate' along with invoice date range parameters");
+		}
+
+		if ((invoiceDateFrom && !invoiceDateTo) || (!invoiceDateFrom && invoiceDateTo)) {
+			return new CustomError("Both range parameters must be present for 'invoiceDate'");
+		}
+
+		if (dueDate && (dueDateFrom || dueDateTo)) {
+			return new CustomError("Cannot use 'dueDate' along with due date range parameters");
+		}
+
+		if ((dueDateFrom && !dueDateTo) || (!dueDateFrom && dueDateTo)) {
+			return new CustomError("Both range parameters must be present for 'dueDate'");
+		}
+	}
+
+	private fromDomain(invoice: Invoice): InvoiceResponse {
 		const invoiceItems: InvoiceResponse["items"] = invoice.items.map((item) => ({
 			id: item.publicId,
 			description: item.description,
@@ -87,13 +131,13 @@ export class InvoicesController {
 			total: item.total,
 		}));
 
-		const customerAddress: InvoiceResponse["customer"]["address"] = customer.address
+		const customerAddress: InvoiceResponse["customer"]["address"] = invoice.customer.address
 			? {
-					publicId: customer.address.publicId,
-					street: customer.address.street,
-					city: customer.address.city,
-					postal_code: customer.address.postal_code,
-					country: customer.address.country,
+					id: invoice.customer.address.publicId,
+					street: invoice.customer.address.street,
+					city: invoice.customer.address.city,
+					postal_code: invoice.customer.address.postalCode,
+					country: invoice.customer.address.country,
 			  }
 			: undefined;
 
@@ -102,9 +146,9 @@ export class InvoicesController {
 			invoiceId: invoice.referenceId,
 			invoiceNumber: invoice.number,
 			customer: {
-				id: customer.publicId,
-				name: customer.name,
-				email: customer.email,
+				id: invoice.customer.publicId,
+				name: invoice.customer.name,
+				email: invoice.customer.email,
 				address: customerAddress,
 			},
 			invoiceDate: invoice.issueDate.toDateString(),

@@ -1,8 +1,7 @@
 export interface Invoice {
-	id: number;
 	publicId: string;
 	referenceId: string;
-	customerId: number;
+	customer: Customer;
 	number: string;
 	issueDate: Date;
 	dueDate: Date;
@@ -15,7 +14,20 @@ export interface Invoice {
 	notes?: string;
 }
 
-export type InvoiceWithoutId = Omit<Invoice, "id">;
+export interface Customer {
+	publicId: string;
+	name: string;
+	email: string;
+	address?: CustomerAddress;
+}
+
+export interface CustomerAddress {
+	publicId: string;
+	street?: string;
+	city?: string;
+	postalCode?: string;
+	country?: string;
+}
 
 export interface InvoiceItem {
 	publicId: string;

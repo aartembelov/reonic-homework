@@ -8,7 +8,7 @@ export interface InvoiceResponse {
 		id: string;
 		name: string;
 		email: string;
-		address?: { publicId: string; street?: string; city?: string; postal_code?: string; country?: string };
+		address?: { id: string; street?: string; city?: string; postal_code?: string; country?: string };
 	};
 	invoiceDate: string;
 	dueDate: string;

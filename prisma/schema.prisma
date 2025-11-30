@@ -31,9 +31,10 @@ model Invoice {
 
   customer Customer? @relation(fields: [customer_id], references: [id])
 
-  @@map("invoices")
-
   @@index([reference_id])
+  @@index([issue_date])
+  @@index([due_date])
+  @@map("invoices")
 }
 
 model Customer {
@@ -43,11 +44,13 @@ model Customer {
   email      String
   address_id String
 
-  address  Address   @relation(fields: [address_id], references: [id])
+  address  CustomerAddress @relation(fields: [address_id], references: [id])
   invoices Invoice[]
+
+  @@index([name])
 }
 
-model Address {
+model CustomerAddress {
   id          String  @id @default(uuid())
   public_id   String  @unique
   street      String?

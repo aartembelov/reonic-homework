@@ -1,14 +1,15 @@
 import { Injectable } from "@nestjs/common";
 import { CreateInvoiceDto } from "./interfaces/dtos/create-invoice-dto.interface";
-import { Invoice, InvoiceItem, InvoiceStatus, InvoiceWithoutId } from "./interfaces/invoice.interface";
-
-type InvoiceWithoutCustomerId = Omit<InvoiceWithoutId, "customerId">;
+import { Invoice, InvoiceItem, InvoiceStatus } from "./interfaces/invoice.interface";
+import { CustomersDomainService } from "./customers.domain.service";
 
 @Injectable()
 export class InvoicesDomainService {
 	private DEFAULT_CURRENCY = "EUR";
 
-	fromCreateInvoiceDto(invoiceDto: CreateInvoiceDto): InvoiceWithoutCustomerId {
+	constructor(private readonly customersDomainService: CustomersDomainService) {}
+
+	fromCreateInvoiceDto(invoiceDto: CreateInvoiceDto): Invoice {
 		const statusMapping: Record<CreateInvoiceDto["status"], InvoiceStatus> = {
 			draft: InvoiceStatus.Draft,
 			sent: InvoiceStatus.Sent,
@@ -27,10 +28,13 @@ export class InvoicesDomainService {
 			total: item.total,
 		}));
 
+		const customer = this.customersDomainService.fromCreateCustomerDto(invoiceDto.customer);
+
 		return {
 			publicId: this.generateInvoicePublicId(),
 			referenceId: invoiceDto.referenceId,
 			number: invoiceDto.number,
+			customer: customer,
 			issueDate: invoiceDto.issueDate,
 			dueDate: invoiceDto.dueDate,
 			items: invoiceItems,
@@ -40,10 +44,6 @@ export class InvoicesDomainService {
 			currency: invoiceDto.currency ?? this.DEFAULT_CURRENCY,
 			status: invoiceStatus,
 		};
-	}
-
-	setCustomerId(invoice: InvoiceWithoutCustomerId, customerId: number): InvoiceWithoutId | Invoice {
-		return { ...invoice, customerId };
 	}
 
 	private generateInvoicePublicId(): string {
