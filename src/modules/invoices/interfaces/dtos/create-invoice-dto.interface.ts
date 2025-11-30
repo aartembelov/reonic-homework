@@ -8,13 +8,20 @@ export interface CreateInvoiceDto {
 	};
 	issueDate: Date;
 	dueDate: Date;
-	items: { description: string; quantity: number; unitPrice: number; total: number }[];
+	items: CreateInvoiceItemDto[];
 	subtotal: number;
 	tax: number;
 	total: number;
 	currency?: string;
 	status: "draft" | "sent" | "paid" | "overdue" | "cancelled";
 	notes?: string;
+}
+
+export interface CreateInvoiceItemDto {
+	description: string;
+	quantity: number;
+	unitPrice: number;
+	total: number;
 }
 
 export interface CustomerAddressDto {
