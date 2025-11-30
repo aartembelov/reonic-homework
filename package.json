@@ -12,7 +12,9 @@
     "setup": "node dist/setup.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev --name",
-    "prisma:deploy": "prisma migrate deploy"
+    "prisma:deploy": "prisma migrate deploy",
+    "test": "vitest run",
+    "test:cov": "vitest run --coverage"
   },
   "keywords": [
     "invoice",
@@ -25,10 +27,14 @@
     "@nestjs/cli": "11.0.14",
     "@types/node": "20.19.25",
     "@types/pg": "8.15.6",
+    "@vitest/coverage-v8": "4.0.14",
     "prisma": "6.3.0",
     "ts-node": "10.9.2",
     "tsx": "4.7.0",
-    "typescript": "5.9.3"
+    "type-fest": "5.2.0",
+    "typescript": "5.9.3",
+    "unplugin-swc": "1.5.9",
+    "vitest": "4.0.14"
   },
   "dependencies": {
     "@nestjs/common": "11.1.9",
