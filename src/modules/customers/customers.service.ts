@@ -1,4 +1,4 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable, Logger } from "@nestjs/common";
 import { CustomersStoragePort } from "./ports/customer-storage.port";
 import { Customer } from "./interfaces/customer.interface";
 import { CreateCustomerDto } from "./interfaces/create-customer-dto.interface";
@@ -14,10 +14,15 @@ export class CustomersService {
 	) {}
 
 	async create(customerDto: CreateCustomerDto, transaction?: unknown): Promise<Customer> {
+		const method = "CustomersService/create";
+		Logger.log(`${method} - start`);
+
 		const customer = this.customersDomainService.fromCreateCustomerDto(customerDto);
 
 		const createdCustomer = await this.customersStorage.create(customer, transaction);
 
+		Logger.verbose(`${method} - created customer`, createdCustomer.publicId);
+		Logger.log(`${method} - end`);
 		return createdCustomer;
 	}
 }

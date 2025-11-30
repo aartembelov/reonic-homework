@@ -4,7 +4,7 @@ import { Customer } from "./interfaces/customer.interface";
 
 @Injectable()
 export class CustomersDomainService {
-	fromCreateCustomerDto(customerDto: CreateCustomerDto): Customer {
+	fromCreateCustomerDto(customerDto: CreateCustomerDto): Omit<Customer, "id"> {
 		const address = customerDto.address
 			? {
 					publicId: this.generateCustomerAddressPublicId(),

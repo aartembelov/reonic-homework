@@ -1,6 +1,7 @@
 import { Customer } from "../../customers/interfaces/customer.interface";
 
 export interface Invoice {
+	id: number;
 	publicId: string;
 	referenceId: string;
 	customer: Customer;
@@ -15,6 +16,8 @@ export interface Invoice {
 	status: InvoiceStatus;
 	notes?: string;
 }
+
+export type InvoiceWithoutId = Omit<Invoice, "id">;
 
 export interface InvoiceItem {
 	publicId: string;

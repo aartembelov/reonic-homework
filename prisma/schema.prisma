@@ -63,7 +63,7 @@ model InvoiceItem {
   public_id   String @unique
   description String
   quantity    Float
-  unitPrice   Float
+  unit_price  Float
   total       Float
 
   invoice_id Int

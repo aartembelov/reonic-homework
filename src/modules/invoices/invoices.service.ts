@@ -1,4 +1,4 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable, Logger } from "@nestjs/common";
 import { InvoicesStoragePort } from "./ports/invoices-storage.port";
 import { Invoice } from "./interfaces/invoice.interface";
 import { CreateInvoiceDto } from "./interfaces/dtos/create-invoice-dto.interface";
@@ -19,23 +19,33 @@ export class InvoicesService {
 	) {}
 
 	async create(invoiceDto: CreateInvoiceDto): Promise<Invoice> {
-		const invoiceWithoutCustomer = this.invoicesDomainService.fromCreateInvoiceDto(invoiceDto);
+		const method = "InvoicesService/create";
+		Logger.log(`${method} - start`);
 
-		const createCustomerDto: CreateCustomerDto = {
-			name: invoiceDto.customerName,
-			email: invoiceDto.customerEmail,
-		};
+		try {
+			const invoiceWithoutCustomer = this.invoicesDomainService.fromCreateInvoiceDto(invoiceDto);
 
-		const data = await this.transactionsService.executeTransaction(async (transaction) => {
-			const createdCustomer = await this.customersService.create(createCustomerDto, transaction);
+			const createCustomerDto: CreateCustomerDto = {
+				name: invoiceDto.customerName,
+				email: invoiceDto.customerEmail,
+			};
 
-			const invoice = this.invoicesDomainService.setCustomer(invoiceWithoutCustomer, createdCustomer);
+			const createdInvoice = await this.transactionsService.executeTransaction(async (transaction) => {
+				const createdCustomer = await this.customersService.create(createCustomerDto, transaction);
 
-			const createdInvoice = await this.invoicesStorage.create(invoice, transaction);
+				const invoice = this.invoicesDomainService.setCustomer(invoiceWithoutCustomer, createdCustomer);
 
+				const createdInvoice = await this.invoicesStorage.create(invoice, transaction);
+
+				return createdInvoice;
+			});
+
+			Logger.verbose(`${method} - invoice created`, createdInvoice.publicId);
+			Logger.log(`${method} - end`);
 			return createdInvoice;
-		});
-
-		return data;
+		} catch (err) {
+			Logger.error(`${method} - failed to create invoice`, err instanceof Error ? err.message : err);
+			throw new Error("Failed to create invoice");
+		}
 	}
 }

@@ -1,5 +1,5 @@
-import { Invoice } from "../interfaces/invoice.interface";
+import { Invoice, InvoiceWithoutId } from "../interfaces/invoice.interface";
 
 export interface InvoicesStoragePort {
-	create(invoice: Invoice, transaction?: unknown): Promise<Invoice>;
+	create(invoice: InvoiceWithoutId, transaction?: unknown): Promise<Invoice>;
 }

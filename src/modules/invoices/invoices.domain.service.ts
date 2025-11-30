@@ -1,9 +1,9 @@
 import { Injectable } from "@nestjs/common";
 import { CreateInvoiceDto } from "./interfaces/dtos/create-invoice-dto.interface";
-import { Invoice, InvoiceItem, InvoiceStatus } from "./interfaces/invoice.interface";
+import { Invoice, InvoiceItem, InvoiceStatus, InvoiceWithoutId } from "./interfaces/invoice.interface";
 import { Customer } from "../customers/interfaces/customer.interface";
 
-type InvoiceWithoutCustomer = Omit<Invoice, "customer"> & { customer?: Customer };
+type InvoiceWithoutCustomer = Omit<InvoiceWithoutId, "customer"> & { customer?: Customer };
 
 @Injectable()
 export class InvoicesDomainService {
