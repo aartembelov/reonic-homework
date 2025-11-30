@@ -26,8 +26,9 @@ export class InvoicesService {
 			const invoiceWithoutCustomer = this.invoicesDomainService.fromCreateInvoiceDto(invoiceDto);
 
 			const createCustomerDto: CreateCustomerDto = {
-				name: invoiceDto.customerName,
-				email: invoiceDto.customerEmail,
+				name: invoiceDto.customer.name,
+				email: invoiceDto.customer.email,
+				address: invoiceDto.customer.address,
 			};
 
 			const createdInvoice = await this.transactionsService.executeTransaction(async (transaction) => {

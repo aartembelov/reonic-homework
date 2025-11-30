@@ -1,10 +1,12 @@
 export interface CreateInvoiceDto {
-	invoiceId: string;
-	invoiceNumber: string;
-	customerName: string;
-	customerEmail: string;
-	customerAddress?: CustomerAddressDto;
-	invoiceDate: Date;
+	referenceId: string;
+	number: string;
+	customer: {
+		name: string;
+		email: string;
+		address?: CustomerAddressDto;
+	};
+	issueDate: Date;
 	dueDate: Date;
 	items: { description: string; quantity: number; unitPrice: number; total: number }[];
 	subtotal: number;

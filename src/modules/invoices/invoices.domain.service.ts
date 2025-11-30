@@ -30,9 +30,9 @@ export class InvoicesDomainService {
 
 		return {
 			publicId: this.generateInvoicePublicId(),
-			referenceId: invoiceDto.invoiceId,
-			number: invoiceDto.invoiceNumber,
-			issueDate: invoiceDto.invoiceDate,
+			referenceId: invoiceDto.referenceId,
+			number: invoiceDto.number,
+			issueDate: invoiceDto.issueDate,
 			dueDate: invoiceDto.dueDate,
 			items: invoiceItems,
 			subtotal: invoiceDto.subtotal,
