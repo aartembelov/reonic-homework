@@ -7,6 +7,7 @@ import { CreateInvoiceDto } from "./interfaces/dtos/create-invoice-dto.interface
 import { InvoiceResponse } from "./interfaces/responses/invoice-response.interface";
 import { Invoice } from "./interfaces/invoice.interface";
 import { CustomError } from "../errors/custom-error";
+import { InvoiceFilters } from "./ports/invoices-storage.port";
 
 @Controller({ path: ["invoices"] })
 export class InvoicesController {
@@ -73,12 +74,14 @@ export class InvoicesController {
 	): Promise<InvoiceResponse | InvoiceResponse[]> {
 		const method = "InvoicesController/getByQuery";
 		Logger.log(`${method} - start`);
-		const filters = { dueDate, invoiceDate, dueDateFrom, dueDateTo, invoiceDateFrom, invoiceDateTo };
-
-		const error = this.validateQueryParameters(filters);
-		if (error) {
-			throw error;
-		}
+		const filters = this.toInvoiceFilters({
+			dueDate,
+			invoiceDate,
+			dueDateFrom,
+			dueDateTo,
+			invoiceDateFrom,
+			invoiceDateTo,
+		});
 
 		let invoiceResponse: InvoiceResponse | InvoiceResponse[];
 		if (invoiceId) {
@@ -88,38 +91,12 @@ export class InvoicesController {
 			const results = await this.invoicesService.getByCustomerName(customerName, filters);
 			invoiceResponse = results.map((invoice) => this.fromDomain(invoice));
 		} else {
-			throw new CustomError("Either invoiceId or customerName is required");
+			const results = await this.invoicesService.getWithFilters(filters);
+			invoiceResponse = results.map((invoice) => this.fromDomain(invoice));
 		}
 
 		Logger.log(`${method} - end`);
 		return invoiceResponse;
-	}
-
-	private validateQueryParameters(parameters: {
-		invoiceDate?: string;
-		invoiceDateFrom?: string;
-		invoiceDateTo?: string;
-		dueDate?: string;
-		dueDateFrom?: string;
-		dueDateTo?: string;
-	}): CustomError | void {
-		const { invoiceDate, invoiceDateFrom, invoiceDateTo, dueDate, dueDateFrom, dueDateTo } = parameters;
-
-		if (invoiceDate && (invoiceDateFrom || invoiceDateTo)) {
-			return new CustomError("Cannot use 'invoiceDate' along with invoice date range parameters");
-		}
-
-		if ((invoiceDateFrom && !invoiceDateTo) || (!invoiceDateFrom && invoiceDateTo)) {
-			return new CustomError("Both range parameters must be present for 'invoiceDate'");
-		}
-
-		if (dueDate && (dueDateFrom || dueDateTo)) {
-			return new CustomError("Cannot use 'dueDate' along with due date range parameters");
-		}
-
-		if ((dueDateFrom && !dueDateTo) || (!dueDateFrom && dueDateTo)) {
-			return new CustomError("Both range parameters must be present for 'dueDate'");
-		}
 	}
 
 	private fromDomain(invoice: Invoice): InvoiceResponse {
@@ -159,6 +136,26 @@ export class InvoicesController {
 			total: invoice.total,
 			currency: invoice.currency,
 			status: invoice.status,
+		};
+	}
+
+	private toInvoiceFilters(queryFilters: {
+		dueDate?: string;
+		invoiceDate?: string;
+		dueDateFrom?: string;
+		dueDateTo?: string;
+		invoiceDateFrom?: string;
+		invoiceDateTo?: string;
+	}): InvoiceFilters {
+		const { dueDate, invoiceDate, dueDateFrom, dueDateTo, invoiceDateFrom, invoiceDateTo } = queryFilters;
+
+		return {
+			dueDate: dueDate ? new Date(dueDate) : undefined,
+			issueDate: invoiceDate ? new Date(invoiceDate) : undefined,
+			dueDateFrom: dueDateFrom ? new Date(dueDateFrom) : undefined,
+			dueDateTo: dueDateTo ? new Date(dueDateTo) : undefined,
+			issueDateFrom: invoiceDateFrom ? new Date(invoiceDateFrom) : undefined,
+			issueDateTo: invoiceDateTo ? new Date(invoiceDateTo) : undefined,
 		};
 	}
 }

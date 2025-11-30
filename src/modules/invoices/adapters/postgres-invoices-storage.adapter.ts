@@ -205,7 +205,7 @@ export class PostgresInvoicesStorageAdapter implements InvoicesStoragePort {
 		filters?: InvoiceFilters,
 		transaction?: Prisma.TransactionClient
 	): Promise<Invoice[]> {
-		const method = "PostgresInvoicesStorageAdapter/getByCustomerId";
+		const method = "PostgresInvoicesStorageAdapter/getByCustomerName";
 		Logger.log(`${method} - start`);
 		Logger.verbose(`${method} - get by customer name`, customerName);
 
@@ -215,7 +215,8 @@ export class PostgresInvoicesStorageAdapter implements InvoicesStoragePort {
 					customer: {
 						name: customerName,
 					},
-					due_date: filters?.dueDate,
+					due_date: this.getDueDateFilter(filters),
+					issue_date: this.getIssueDateFilter(filters),
 				},
 				include: {
 					items: true,
@@ -243,8 +244,66 @@ export class PostgresInvoicesStorageAdapter implements InvoicesStoragePort {
 		}
 	}
 
-	getWithFilters(filters: InvoiceFilters, transaction?: unknown): Promise<Invoice[]> {
-		throw new Error("Method not implemented.");
+	async getWithFilters(filters: InvoiceFilters, transaction?: Prisma.TransactionClient): Promise<Invoice[]> {
+		const method = "PostgresInvoicesStorageAdapter/getWithFilters";
+		Logger.log(`${method} - start`);
+
+		try {
+			const response = await (transaction ?? this.prismaService).invoice.findMany({
+				where: {
+					due_date: this.getDueDateFilter(filters),
+					issue_date: this.getIssueDateFilter(filters),
+				},
+				include: {
+					items: true,
+					customer: {
+						include: {
+							address: true,
+						},
+					},
+				},
+			});
+
+			const invoices = response.map((dbInvoice) => {
+				const customer = dbInvoice.customer;
+				if (!customer) {
+					throw new CustomError(`customer doesn't exist for invoice ${dbInvoice.public_id}`);
+				}
+				return this.toDomain({ ...dbInvoice, customer });
+			});
+
+			Logger.log(`${method} - end`);
+			return invoices;
+		} catch (err) {
+			Logger.error(`${method} - failed to get invoice attached to customer`, err instanceof Error ? err.message : err);
+			throw new CustomError("Failed to get invoice attached to customer");
+		}
+	}
+
+	private getDueDateFilter(filters: Pick<InvoiceFilters, "dueDate" | "dueDateFrom" | "dueDateTo"> | undefined) {
+		if (filters?.dueDateFrom && filters?.dueDateTo) {
+			return {
+				gte: filters.dueDateFrom,
+				lte: filters.dueDateTo,
+			};
+		}
+
+		if (filters?.dueDate) {
+			return filters?.dueDate;
+		}
+	}
+
+	private getIssueDateFilter(filters: Pick<InvoiceFilters, "issueDate" | "issueDateFrom" | "issueDateTo"> | undefined) {
+		if (filters?.issueDateFrom && filters?.issueDateTo) {
+			return {
+				gte: filters.issueDateFrom,
+				lte: filters.issueDateTo,
+			};
+		}
+
+		if (filters?.issueDate) {
+			return filters?.issueDate;
+		}
 	}
 
 	private toDomain(

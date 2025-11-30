@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
-import { InvoicesStoragePort } from "./ports/invoices-storage.port";
+import { InvoiceFilters, InvoicesStoragePort } from "./ports/invoices-storage.port";
 import { Invoice } from "./interfaces/invoice.interface";
 import { CreateInvoiceDto } from "./interfaces/dtos/create-invoice-dto.interface";
 import { InvoicesDomainService } from "./invoices.domain.service";
@@ -12,8 +12,7 @@ export const INVOICES_STORAGE_TOKEN = Symbol.for("INVOICES_STORAGE_TOKEN");
 export class InvoicesService {
 	constructor(
 		@Inject(INVOICES_STORAGE_TOKEN) private readonly invoicesStorage: InvoicesStoragePort,
-		private readonly invoicesDomainService: InvoicesDomainService,
-		private readonly transactionsService: TransactionsService
+		private readonly invoicesDomainService: InvoicesDomainService
 	) {}
 
 	async create(invoiceDto: CreateInvoiceDto): Promise<Invoice> {
@@ -72,19 +71,16 @@ export class InvoicesService {
 		}
 	}
 
-	async getByCustomerName(
-		customerName: string,
-		filters?: {
-			dueDate?: string;
-			invoiceDate?: string;
-			dueDateFrom?: string;
-			dueDateTo?: string;
-			invoiceDateFrom?: string;
-			invoiceDateTo?: string;
-		}
-	): Promise<Invoice[]> {
+	async getByCustomerName(customerName: string, filters?: InvoiceFilters): Promise<Invoice[]> {
 		const method = "InvoicesService/getByCustomerName";
 		Logger.log(`${method} - start`);
+
+		if (filters) {
+			const error = this.validateInvoiceFilters(filters);
+			if (error) {
+				throw error;
+			}
+		}
 
 		try {
 			const invoices = await this.invoicesStorage.getByCustomerName(customerName, filters);
@@ -93,23 +89,56 @@ export class InvoicesService {
 			return invoices;
 		} catch (err) {
 			Logger.error(`${method} - failed to get invoice`, err instanceof Error ? err.message : err);
-			throw err instanceof CustomError ? err : new CustomError("Failed to get invoice");
+			throw err instanceof CustomError ? err : new CustomError("Failed to get invoices");
 		}
 	}
 
-	// async getWithFilters(parameters: {
-	// 	dueDate?: string;
-	// 	invoiceDate?: string;
-	// 	dueDateFrom?: string;
-	// 	dueDateTo?: string;
-	// 	invoiceDateFrom?: string;
-	// 	invoiceDateTo?: string;
-	// }): Promise<Invoice[]> {
-	// 	const method = "InvoicesService/getWithFilters";
-	// 	Logger.log(`${method} - start`);
+	async getWithFilters(filters: InvoiceFilters): Promise<Invoice[]> {
+		const method = "InvoicesService/getWithFilters";
+		Logger.log(`${method} - start`);
 
-	// 	const invoices = await this.invoicesStorage.getWithFilters(parameters);
+		if (filters) {
+			const error = this.validateInvoiceFilters(filters);
+			if (error) {
+				throw error;
+			}
+		}
 
-	// 	Logger.log(`${method} - end`);
-	// }
+		try {
+			const invoices = await this.invoicesStorage.getWithFilters(filters);
+
+			Logger.log(`${method} - end`);
+			return invoices;
+		} catch (err) {
+			Logger.error(`${method} - failed to get invoice`, err instanceof Error ? err.message : err);
+			throw err instanceof CustomError ? err : new CustomError("Failed to get invoices");
+		}
+	}
+
+	private validateInvoiceFilters(filter: InvoiceFilters): CustomError | void {
+		const {
+			issueDate: invoiceDate,
+			issueDateFrom: invoiceDateFrom,
+			issueDateTo: invoiceDateTo,
+			dueDate,
+			dueDateFrom,
+			dueDateTo,
+		} = filter;
+
+		if (invoiceDate && (invoiceDateFrom || invoiceDateTo)) {
+			return new CustomError("Cannot use 'invoiceDate' along with invoice date range parameters");
+		}
+
+		if ((invoiceDateFrom && !invoiceDateTo) || (!invoiceDateFrom && invoiceDateTo)) {
+			return new CustomError("Both range parameters must be present for 'invoiceDate'");
+		}
+
+		if (dueDate && (dueDateFrom || dueDateTo)) {
+			return new CustomError("Cannot use 'dueDate' along with due date range parameters");
+		}
+
+		if ((dueDateFrom && !dueDateTo) || (!dueDateFrom && dueDateTo)) {
+			return new CustomError("Both range parameters must be present for 'dueDate'");
+		}
+	}
 }

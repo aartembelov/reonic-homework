@@ -1,12 +1,12 @@
 import { Invoice } from "../interfaces/invoice.interface";
 
 export interface InvoiceFilters {
-	dueDate?: string;
-	invoiceDate?: string;
-	dueDateFrom?: string;
-	dueDateTo?: string;
-	invoiceDateFrom?: string;
-	invoiceDateTo?: string;
+	dueDate?: Date;
+	issueDate?: Date;
+	dueDateFrom?: Date;
+	dueDateTo?: Date;
+	issueDateFrom?: Date;
+	issueDateTo?: Date;
 }
 
 export interface InvoicesStoragePort {
