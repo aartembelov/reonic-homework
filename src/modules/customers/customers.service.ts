@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import { CustomersStoragePort } from "./ports/customer-storage.port";
 import { Customer } from "./interfaces/customer.interface";
 import { CreateCustomerDto } from "./interfaces/create-customer-dto.interface";
@@ -10,7 +10,7 @@ export const CUSTOMERS_STORAGE_TOKEN = Symbol.for("CUSTOMERS_STORAGE_TOKEN");
 export class CustomersService {
 	constructor(
 		private readonly customersDomainService: CustomersDomainService,
-		private readonly customersStorage: CustomersStoragePort
+		@Inject(CUSTOMERS_STORAGE_TOKEN) private readonly customersStorage: CustomersStoragePort
 	) {}
 
 	async create(customerDto: CreateCustomerDto, transaction?: unknown): Promise<Customer> {
