@@ -11,10 +11,7 @@ RUN npm ci
 # Copy Prisma schema and source code
 COPY prisma ./prisma
 COPY src ./src
-
-# Set a dummy DATABASE_URL for build-time
-ARG DATABASE_URL=postgresql://fake
-ENV DATABASE_URL=${DATABASE_URL}
+COPY schema ./schema
 
 # Generate Prisma Client
 RUN npm run prisma:generate
