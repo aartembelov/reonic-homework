@@ -164,42 +164,6 @@ export class PostgresInvoicesStorageAdapter implements InvoicesStoragePort {
 		}
 	}
 
-	async getByCustomerId(customerId: number, transaction?: Prisma.TransactionClient): Promise<Invoice[]> {
-		const method = "PostgresInvoicesStorageAdapter/getByCustomerId";
-		Logger.log(`${method} - start`);
-		Logger.verbose(`${method} - get by customer id`, customerId);
-
-		try {
-			const response = await (transaction ?? this.prismaService).invoice.findMany({
-				where: {
-					customer_id: customerId,
-				},
-				include: {
-					items: true,
-					customer: {
-						include: {
-							address: true,
-						},
-					},
-				},
-			});
-
-			const invoices = response.map((dbInvoice) => {
-				const customer = dbInvoice.customer;
-				if (!customer) {
-					throw new CustomError(`customer doesn't exist for invoice ${dbInvoice.public_id}`);
-				}
-				return this.toDomain({ ...dbInvoice, customer });
-			});
-
-			Logger.log(`${method} - end`);
-			return invoices;
-		} catch (err) {
-			Logger.error(`${method} - failed to get invoice attached to customer`, err instanceof Error ? err.message : err);
-			throw new CustomError("Failed to get invoice attached to customer");
-		}
-	}
-
 	async getByCustomerName(
 		customerName: string,
 		filters?: InvoiceFilters,
@@ -239,8 +203,8 @@ export class PostgresInvoicesStorageAdapter implements InvoicesStoragePort {
 			Logger.log(`${method} - end`);
 			return invoices;
 		} catch (err) {
-			Logger.error(`${method} - failed to get invoice attached to customer`, err instanceof Error ? err.message : err);
-			throw new CustomError("Failed to get invoice attached to customer");
+			Logger.error(`${method} - failed to get invoice`, err instanceof Error ? err.message : err);
+			throw new CustomError("Failed to get invoice");
 		}
 	}
 
@@ -275,8 +239,8 @@ export class PostgresInvoicesStorageAdapter implements InvoicesStoragePort {
 			Logger.log(`${method} - end`);
 			return invoices;
 		} catch (err) {
-			Logger.error(`${method} - failed to get invoice attached to customer`, err instanceof Error ? err.message : err);
-			throw new CustomError("Failed to get invoice attached to customer");
+			Logger.error(`${method} - failed to get invoice`, err instanceof Error ? err.message : err);
+			throw new CustomError("Failed to get invoice");
 		}
 	}
 
