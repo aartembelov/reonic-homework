@@ -1,10 +1,8 @@
-import { Customer } from "../../customers/interfaces/customer.interface";
-
 export interface Invoice {
 	id: number;
 	publicId: string;
 	referenceId: string;
-	customer: Customer;
+	customerId: number;
 	number: string;
 	issueDate: Date;
 	dueDate: Date;

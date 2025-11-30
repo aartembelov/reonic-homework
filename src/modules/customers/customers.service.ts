@@ -3,6 +3,7 @@ import { CustomersStoragePort } from "./ports/customer-storage.port";
 import { Customer } from "./interfaces/customer.interface";
 import { CreateCustomerDto } from "./interfaces/create-customer-dto.interface";
 import { CustomersDomainService } from "./customers.domain.service";
+import { CustomError } from "../errors/custom-error";
 
 export const CUSTOMERS_STORAGE_TOKEN = Symbol.for("CUSTOMERS_STORAGE_TOKEN");
 
@@ -24,5 +25,18 @@ export class CustomersService {
 		Logger.verbose(`${method} - created customer`, createdCustomer.publicId);
 		Logger.log(`${method} - end`);
 		return createdCustomer;
+	}
+
+	async getById(customerId: number): Promise<Customer> {
+		const method = "CustomersService/getById";
+		Logger.log(`${method} - start`);
+
+		const customer = await this.customersStorage.getById(customerId);
+		if (!customer) {
+			throw new CustomError("Customer not found");
+		}
+
+		Logger.log(`${method} - end`);
+		return customer;
 	}
 }

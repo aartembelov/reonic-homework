@@ -1,7 +1,7 @@
 import { PipeTransform, Injectable, BadRequestException } from "@nestjs/common";
-import Ajv, { Schema, ValidateFunction } from "ajv";
+import Ajv, { ErrorObject, Schema, ValidateFunction } from "ajv";
 import addFormats from "ajv-formats";
-import fs from "fs";
+import { CustomError } from "../../modules/errors/custom-error";
 
 @Injectable()
 export class JsonSchemaValidationPipe implements PipeTransform {
@@ -15,8 +15,13 @@ export class JsonSchemaValidationPipe implements PipeTransform {
 
 	transform(value: unknown) {
 		const valid = this.validate(value);
-		if (!valid) {
-			throw new BadRequestException({ errors: this.validate.errors });
+		if (!valid && this.validate.errors) {
+			const messages = this.validate.errors.map((err: ErrorObject) => {
+				const path = err.instancePath || err.schemaPath;
+				return `${path}: ${err.message}`;
+			});
+
+			throw new CustomError(messages.join("; "));
 		}
 		return value;
 	}

@@ -1,15 +1,14 @@
 import { Injectable } from "@nestjs/common";
 import { CreateInvoiceDto } from "./interfaces/dtos/create-invoice-dto.interface";
 import { Invoice, InvoiceItem, InvoiceStatus, InvoiceWithoutId } from "./interfaces/invoice.interface";
-import { Customer } from "../customers/interfaces/customer.interface";
 
-type InvoiceWithoutCustomer = Omit<InvoiceWithoutId, "customer"> & { customer?: Customer };
+type InvoiceWithoutCustomerId = Omit<InvoiceWithoutId, "customerId">;
 
 @Injectable()
 export class InvoicesDomainService {
 	private DEFAULT_CURRENCY = "EUR";
 
-	fromCreateInvoiceDto(invoiceDto: CreateInvoiceDto): InvoiceWithoutCustomer {
+	fromCreateInvoiceDto(invoiceDto: CreateInvoiceDto): InvoiceWithoutCustomerId {
 		const statusMapping: Record<CreateInvoiceDto["status"], InvoiceStatus> = {
 			draft: InvoiceStatus.Draft,
 			sent: InvoiceStatus.Sent,
@@ -43,9 +42,8 @@ export class InvoicesDomainService {
 		};
 	}
 
-	setCustomer(invoice: InvoiceWithoutCustomer, customer: Customer): Invoice {
-		invoice.customer = customer;
-		return invoice as Invoice;
+	setCustomerId(invoice: InvoiceWithoutCustomerId, customerId: number): InvoiceWithoutId | Invoice {
+		return { ...invoice, customerId };
 	}
 
 	private generateInvoicePublicId(): string {
@@ -54,13 +52,5 @@ export class InvoicesDomainService {
 
 	private generateInvoiceItemPublicId(): string {
 		return `invi_${crypto.randomUUID()}`;
-	}
-
-	private generateCustomerPublicId(): string {
-		return `cus_${crypto.randomUUID()}`;
-	}
-
-	private generateCustomerAddressPublicId(): string {
-		return `addr_${crypto.randomUUID()}`;
 	}
 }

@@ -3,6 +3,7 @@ import { CustomersStoragePort } from "../ports/customer-storage.port";
 import { Customer, CustomerAddress, CustomerWithoutId } from "../interfaces/customer.interface";
 import { PrismaService } from "../../prisma/prisma.service";
 import { Customer as DbCustomer, Address as DbAddress } from "@prisma/client";
+import { CustomError } from "../../errors/custom-error";
 
 @Injectable()
 export class PostgresCustomersStorageAdapter implements CustomersStoragePort {
@@ -44,12 +45,23 @@ export class PostgresCustomersStorageAdapter implements CustomersStoragePort {
 			return createdCustomer;
 		} catch (err) {
 			Logger.error(`${method} - failed to create a customer`, err instanceof Error ? err.message : err);
-			throw new Error("Failed to create a customer");
+			throw new CustomError("Failed to create a customer");
 		}
 	}
 
-	getByPublicId(publicId: string): Promise<Customer> {
-		throw new Error("Method not implemented.");
+	async getById(customerId: number, transaction?: unknown): Promise<Customer | null> {
+		const method = "PostgresCustomersStorageAdapter/getById";
+		Logger.log(`${method} - start`);
+
+		const response = await this.prismaService.customer.findUnique({
+			where: { id: customerId },
+			include: { address: true },
+		});
+
+		const customer = response ? this.toDomain(response) : null;
+
+		Logger.log(`${method} - end`);
+		return customer;
 	}
 
 	private toDomain(dbCustomer: DbCustomer & { address: DbAddress }): Customer {

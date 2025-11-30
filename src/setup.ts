@@ -1,12 +1,13 @@
 import { exec } from "child_process";
 import util from "util";
+import { CustomError } from "./modules/errors/custom-error";
 
 const asyncExec = util.promisify(exec);
 
 async function setup() {
 	const databaseUrl = process.env.DATABASE_URL;
 	if (!databaseUrl) {
-		throw new Error("Database URL is not defined");
+		throw new CustomError("Database URL is not defined");
 	}
 
 	console.log("Running database setup...");

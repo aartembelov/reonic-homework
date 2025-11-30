@@ -6,6 +6,8 @@ import { InvoicesDomainService } from "./invoices.domain.service";
 import { CustomersService } from "../customers/customers.service";
 import { CreateCustomerDto } from "../customers/interfaces/create-customer-dto.interface";
 import { TransactionsService } from "../transaction/transactions.service";
+import { Customer } from "../customers/interfaces/customer.interface";
+import { CustomError } from "../errors/custom-error";
 
 export const INVOICES_STORAGE_TOKEN = Symbol.for("INVOICES_STORAGE_TOKEN");
 
@@ -18,7 +20,7 @@ export class InvoicesService {
 		private readonly transactionsService: TransactionsService
 	) {}
 
-	async create(invoiceDto: CreateInvoiceDto): Promise<Invoice> {
+	async create(invoiceDto: CreateInvoiceDto): Promise<{ invoice: Invoice; customer: Customer }> {
 		const method = "InvoicesService/create";
 		Logger.log(`${method} - start`);
 
@@ -31,22 +33,44 @@ export class InvoicesService {
 				address: invoiceDto.customer.address,
 			};
 
-			const createdInvoice = await this.transactionsService.executeTransaction(async (transaction) => {
+			const { invoice, customer } = await this.transactionsService.executeTransaction(async (transaction) => {
 				const createdCustomer = await this.customersService.create(createCustomerDto, transaction);
 
-				const invoice = this.invoicesDomainService.setCustomer(invoiceWithoutCustomer, createdCustomer);
+				const invoice = this.invoicesDomainService.setCustomerId(invoiceWithoutCustomer, createdCustomer.id);
 
 				const createdInvoice = await this.invoicesStorage.create(invoice, transaction);
 
-				return createdInvoice;
+				return { invoice: createdInvoice, customer: createdCustomer };
 			});
 
-			Logger.verbose(`${method} - invoice created`, createdInvoice.publicId);
+			Logger.verbose(`${method} - invoice created`, invoice.publicId);
+			Logger.verbose(`${method} - customer created`, customer.publicId);
 			Logger.log(`${method} - end`);
-			return createdInvoice;
+			return { invoice, customer };
 		} catch (err) {
 			Logger.error(`${method} - failed to create invoice`, err instanceof Error ? err.message : err);
-			throw new Error("Failed to create invoice");
+			throw err instanceof CustomError ? err : new CustomError("Failed to create invoice");
+		}
+	}
+
+	async getByPublicId(invoicePublicId: string): Promise<{ invoice: Invoice; customer: Customer }> {
+		const method = "InvoicesService/getByPublicId";
+		Logger.log(`${method} - start`);
+		Logger.verbose(`${method} - invoice public id`, invoicePublicId);
+
+		try {
+			const invoice = await this.invoicesStorage.getByPublicId(invoicePublicId);
+			if (!invoice) {
+				throw new CustomError("Invoice not found by id");
+			}
+
+			const customer = await this.customersService.getById(invoice.customerId);
+
+			Logger.log(`${method} - end`);
+			return { invoice, customer };
+		} catch (err) {
+			Logger.error(`${method} - failed to get invoice`, err instanceof Error ? err.message : err);
+			throw err instanceof CustomError ? err : new CustomError("Failed to get invoice");
 		}
 	}
 }
