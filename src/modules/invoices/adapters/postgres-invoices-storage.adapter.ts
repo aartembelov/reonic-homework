@@ -65,8 +65,12 @@ export class PostgresInvoicesStorageAdapter implements InvoicesStoragePort {
 					notes: invoice.notes,
 				},
 				include: {
-					customer: true,
 					items: true,
+					customer: {
+						include: {
+							address: true,
+						},
+					},
 				},
 			});
 
