@@ -6,7 +6,7 @@ WORKDIR /app
 COPY .npmrc package*.json tsconfig.json ./
 
 # Install dependencies
-RUN npm ci
+RUN npm install
 
 # Copy Prisma schema and source code
 COPY prisma ./prisma
@@ -24,17 +24,13 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy prod dependencies only
 COPY package*.json ./
-RUN npm ci --omit=dev
+RUN npm install
 
-# Copy built code + prisma client
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/prisma ./prisma
 
-# Expose port
 EXPOSE 3000
 
-# Run setup + start
 CMD ["sh", "-c", "npm run setup && npm run start:prod"]
