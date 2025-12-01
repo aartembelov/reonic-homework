@@ -73,7 +73,6 @@ Endpoints
   - GET /invoices?invoiceDate=<ISO date> OR invoiceDateFrom & invoiceDateTo
   - GET /invoices?dueDate=<ISO date> OR dueDateFrom & dueDateTo
   - Controller: [InvoicesController](http://_vscodecontentref_/6)
-  - Pagination: not implemented (returns full result set).
   - Filtering implemented in [PostgresInvoicesStorageAdapter](http://_vscodecontentref_/7).
 
 ## How to run
