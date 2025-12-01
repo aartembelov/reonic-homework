@@ -1,5 +1,3 @@
-// ...existing code...
-
 # Reonic Invoice Service
 
 This repository implements a minimal invoice management backend built with NestJS, Prisma and PostgreSQL. It accepts invoices in the provided JSON schema, persists them in Postgres via Prisma and exposes simple REST endpoints.
