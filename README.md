@@ -1,226 +1,149 @@
-# Reonic Backend Take-Home Exercise
+// ...existing code...
 
-## Overview
+# Reonic Invoice Service
 
-Welcome to the Reonic Backend take-home exercise! In this task, you'll
-build a simple invoice storage and retrieval service using TypeScript,
-Node.js, and PostgreSQL.
+This repository implements a minimal invoice management backend built with NestJS, Prisma and PostgreSQL. It accepts invoices in the provided JSON schema, persists them in Postgres via Prisma and exposes simple REST endpoints.
 
-We use this exercise to evaluate your technical skills and to see how
-you approach problems.  Our evaluation of your submission determines
-whether we continue the hiring process with you or whether we stop.
-For that reason, it is important to us that you enjoy the process
-itself for the challenge and maybe also for trying out something new
-in your implementation.  Remember that you will not be compensated for
-the time you spend on this exercise, so make sure that you find some
-enjoyment in the work itself.
+Key files:
 
-We do not provide you with a fixed time limit that you spend on
-working on the exercise, but please submit your solution by the date
-you have been given as the deadline.  You can certainly ask for an
-extension, as personal matters can always interfere.
+- App entry: [src/main.ts](src/main.ts) ([`AppModule`](src/modules/app/app.module.ts))
+- Database setup: [src/setup.ts](src/setup.ts)
+- JSON schema: [schema/invoice.schema.json](schema/invoice.schema.json)
+- Sample payloads: [sample-data](sample-data)
+- Docker orchestration: [docker-compose.yml](docker-compose.yml)
+- Docker image: [Dockerfile](Dockerfile)
+- Build/runtime scripts: [package.json](package.json)
 
-We use LLM based coding assistants in our work and we don't expect you
-to work without.  In this exercise, however, we're interested in
-seeing your own coding skills.  We have limited time to review your
-code, so don't submit large amounts of code that you've not written
-yourself.
+## API
 
-## Context
+Base URL: http://localhost:3000
 
-At Reonic, we work extensively with structured data from various
-sources. This exercise simulates a common pattern in our backend
-systems: receiving data in a standardized format, persisting it
-reliably, and providing flexible APIs for retrieval and search.
+Endpoints
 
-## Tech Stack Requirements
+- Create invoice
 
-### Required
-- **Language:** TypeScript
-- **Database:** PostgreSQL
-- **Runtime:** Node.js
+  - POST /invoices
+  - Controller: [`InvoicesController`](src/modules/invoices/invoices.controller.ts)
+  - Validation: [`JsonSchemaValidationPipe`](src/shared/pipes/json-schema-validation.pipe.ts) using [schema/invoice.schema.json](schema/invoice.schema.json)
+  - Request example (JSON):
+    ```json
+    {
+    	"invoiceId": "INV-A1B2C3D4-1234-5678-9ABC-DEF012345679",
+    	"invoiceNumber": "2024-0001",
+    	"customerName": "Solar Energy GmbH",
+    	"customerEmail": "billing@solar-energy.de",
+    	"customerAddress": {
+    		"street": "Sonnenstraße 42",
+    		"city": "München",
+    		"postalCode": "80331",
+    		"country": "Germany"
+    	},
+    	"invoiceDate": "2024-01-15",
+    	"dueDate": "2024-02-14",
+    	"items": [
+    		{
+    			"description": "Solar panel installation",
+    			"quantity": 1,
+    			"unitPrice": 8500,
+    			"total": 8500
+    		}
+    	],
+    	"subtotal": 8500,
+    	"tax": 1615,
+    	"total": 10115,
+    	"currency": "EUR",
+    	"status": "paid"
+    }
+    ```
+  - Success response (201): See structure in [InvoiceResponse](http://_vscodecontentref_/0).
+  - Flow:
+    - Request validated by [JsonSchemaValidationPipe](http://_vscodecontentref_/1).
+    - Mapping + domain validation by [InvoicesDomainService](http://_vscodecontentref_/2).
+    - Persisted via [PostgresInvoicesStorageAdapter](http://_vscodecontentref_/3) using [PrismaService](http://_vscodecontentref_/4).
 
-### Optional (we use these at Reonic, but feel free to use alternatives or use no libraries)
-- **ORM:** Prisma
-- **API:** Apollo GraphQL
+- Get invoice by public id
 
-You are free to choose:
-- HTTP server framework (Express, Fastify, Koa, etc.)
-- REST or GraphQL API style
-- Any additional libraries you find helpful
+  - GET /invoices/:public_id
+  - Controller: [InvoicesController](http://_vscodecontentref_/5)
+  - Returns single invoice or 400 with `{ message: "Invoice not found by id" }`.
 
-## Task Description
+- Query invoices (customer / dates)
+  - GET /invoices?customerName=<name>
+  - GET /invoices?invoiceId=<referenceId>
+  - GET /invoices?invoiceDate=<ISO date> OR invoiceDateFrom & invoiceDateTo
+  - GET /invoices?dueDate=<ISO date> OR dueDateFrom & dueDateTo
+  - Controller: [InvoicesController](http://_vscodecontentref_/6)
+  - Pagination: not implemented (returns full result set).
+  - Filtering implemented in [PostgresInvoicesStorageAdapter](http://_vscodecontentref_/7).
 
-Build a service that can:
+## How to run
 
-1. **Accept and store invoices** in the provided JSON format
-2. **Retrieve invoices** by:
-   - Invoice ID
-   - Customer name
-   - Date (or date range)
-3. **Provide a search interface** that allows flexible querying across invoice fields
+- Local Docker (recommended)
 
-## Getting Started
+  - Start DB: `docker compose up postgres -d`
+  - Install deps: `npm ci`
+  - Generate prisma client: `npm run prisma:generate`
+  - Run setup: `npm run setup` (runs [setup.ts](http://_vscodecontentref_/8), which executes Prisma migrations)
+  - Start server: `npm run start:dev` or via Docker: `docker compose up --build`
 
-### Prerequisites
-- Docker and Docker Compose installed
-- Node.js 20+ installed (for local development)
+- Full docker: `docker compose up --build`
+  - Container runs [npm run setup](http://_vscodecontentref_/9) (see Dockerfile) and then starts the app.
 
-### Setup
+## Design decisions & trade-offs
 
-We have provided a `docker-compose.yml` that contains the database
-server and a skeleton application container that is to contain your
-application code.
+- Normalized data model
 
-#### Option 1: Development
+  - Customers and addresses are separate entities (see prisma/schema.prisma): avoids duplication and supports multiple invoices per customer.
+  - Trade-off: more joins / nested writes required.
 
-1. Start only the PostgreSQL database:
-   ```bash
-   docker compose up postgres -d
-   ```
+- Prisma + Nested create
 
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
+  - Persists invoice, customer, address and items in a single nested write for atomicity ([PostgresInvoicesStorageAdapter](http://_vscodecontentref_/10)).
+  - Trade-off: nested writes require careful validation to avoid partial failures.
 
-3. Implement your database setup in `src/setup.ts`
+- Input validation
 
-4. Run the setup script:
-   ```bash
-   npm run build && npm run setup
-   ```
+  - JSON Schema validation via [JsonSchemaValidationPipe](http://_vscodecontentref_/14) using [invoice.schema.json](http://_vscodecontentref_/15) ensures request shape before mapping to DTOs and domain objects.
+  - Additional domain validation (totals, dates) implemented in [InvoicesDomainService](http://_vscodecontentref_/16).
 
-5. Start the application:
-   ```bash
-   npm run dev
-   ```
+- Error handling
+  - CustomError ([custom-error.ts](http://_vscodecontentref_/17)) used for expected domain errors.
+  - Global exception filter implemented in [ExceptionFilter](http://_vscodecontentref_/18) converts domain errors to HTTP 400 responses.
 
-#### Option 2: Full Docker Environment (Test your final submission)
+## Assumptions
 
-Start everything with Docker:
-```bash
-docker compose up --build
-```
+- Incoming totals (item.total, subtotal, tax, total) are provided and must match domain validations. The service validates consistency (see [InvoicesDomainService](http://_vscodecontentref_/19)).
+- Customer identity for lookups uses exact [customerName](http://_vscodecontentref_/20) equality.
+- Date strings provided in requests are parseable by JS Date.
+- Currency is an ISO 4217 code (default handled by domain if not provided).
 
-This will:
-- Start PostgreSQL
-- Build your application
-- Run your database setup script (`src/setup.ts`)
-- Start your application server
+## Known limitations & areas for improvement
 
-### Application startup
+- Customer matching is exact equality; should implement deduplication / lookup by email or case-insensitive matching.
+- Search is basic (exact matches / range filters). Add full-text search, case-insensitive matching, partial matches and sorting.
+- Totals are validated but currently accepted from client — calculation server-side would improve integrity and prevent tampering.
+- Error responses are simple; add structured error codes and better logging.
+- Consider rate limiting, input sanitization and security hardening for production readiness.
 
-Your application should:
-1. Automatically set up the database schema (via `src/setup.ts`)
-2. Start and be ready to accept requests
-3. Be accessible at `http://localhost:3000`
+## Relevant code references
 
-### Database Connection
+- Controllers: [InvoicesController](http://_vscodecontentref_/21)
+- Services: [InvoicesService](http://_vscodecontentref_/22), [InvoicesDomainService](http://_vscodecontentref_/23), [CustomersDomainService](http://_vscodecontentref_/24)
+- Storage: [PostgresInvoicesStorageAdapter](http://_vscodecontentref_/25)
+- Prisma setup/service: [PrismaService](http://_vscodecontentref_/26), [schema.prisma](http://_vscodecontentref_/27)
+- Transaction abstraction: [TransactionsService](http://_vscodecontentref_/28), [PostgresTransactionsAdapter](http://_vscodecontentref_/29)
+- Validation pipe & schema: [JsonSchemaValidationPipe](http://_vscodecontentref_/30), [invoice.schema.json](http://_vscodecontentref_/31)
+- Global filter: [ExceptionFilter](http://_vscodecontentref_/32)
+- Database setup script: [setup.ts](http://_vscodecontentref_/33)
+- Docker: [docker-compose.yml](http://_vscodecontentref_/34) and [Dockerfile](http://_vscodecontentref_/35)
+- Examples: [sample-data](http://_vscodecontentref_/36)
 
-The PostgreSQL database is configured with the following credentials
-(see `docker-compose.yml`):
+## Notes
 
-**For local development (connecting from your host machine):**
-- Connection string: `postgresql://reonic:reonic_dev@localhost:54320/invoices`
+- The repository already contains example payloads in [sample-data](http://_vscodecontentref_/37) and the JSON schema at [invoice.schema.json](http://_vscodecontentref_/38).
+- Migrations are present under [migrations](http://_vscodecontentref_/39). The setup script runs [npm run prisma:deploy](http://_vscodecontentref_/40) to apply migrations.
 
-**For Docker (connecting from the app container):**
-- Connection string: `postgresql://reonic:reonic_dev@postgres:5432/invoices`
+## Contact / next steps
 
-The `DATABASE_URL` environment variable is automatically set correctly
-in both environments.
-
-## Invoice Format
-
-Invoices follow the JSON schema defined in
-`schema/invoice.schema.json`. Sample invoices are provided in the
-`sample-data/` directory.
-
-## What We're Looking For
-
-### Must Have
-1. **Docker-ready solution**: Your application must start successfully
-with `docker compose up --build`
-
-2. **Database setup script** (`src/setup.ts`):
-   - Creates all necessary tables/schema
-   - Should be idempotent (safe to run multiple times)
-   - Runs automatically when the Docker container starts
-
-3. **Working API endpoints** for:
-   - Creating/storing an invoice
-   - Retrieving an invoice by ID
-   - Retrieving invoices by customer name
-   - Retrieving invoices by date or date range
-   - Searching across invoices
-
-4. **Data validation**: Ensure incoming data matches the schema
-
-5. **Database schema**: A well-designed schema for storing invoices
-
-6. **Type safety**: Proper TypeScript types throughout
-
-7. **Basic error handling**: Handle common error cases gracefully
-
-8. **README/Documentation**:
-   - API documentation (endpoints, request/response formats, example requests)
-   - Your design decisions and trade-offs
-   - Any assumptions you made
-   - Any known limitations or areas for improvement
-
-### Nice to Have
-- Tests for core functionality
-- Structured database migrations (instead of a simple setup script)
-- Pagination for list/search endpoints
-- Advanced search features (partial matching, multiple filters, sorting, etc.)
-- Input sanitization and security considerations
-- Structured logging
-- API request validation middleware
-- Health check endpoint
-
-### Not Required
-- Authentication/authorization
-- Frontend or API client
-- Deployment configuration
-- Comprehensive test coverage (focus on key functionality if time permits)
-
-## Evaluation Criteria
-
-We'll be looking at:
-
-1. **Code quality**: Is the code clean, readable, and well-organized?
-2. **TypeScript usage**: Are types used effectively?
-3. **API design**: Are the endpoints logical and easy to use?
-4. **Database design**: Is the schema appropriate for the use case?
-5. **Error handling**: Are errors handled appropriately?
-6. **Documentation**: Can we understand and run your code?
-7. **Pragmatism**: Did you make reasonable trade-offs given the time constraint?
-
-## Submission
-
-Please provide your source code (including all files needed to run via
-Docker) in a GitHub repository or a single ZIP file.
-
-**Before submitting, please test that your solution works by:**
-1. Stopping all containers: `docker compose down -v`
-2. Starting fresh: `docker compose up --build`
-3. Testing your API endpoints
-
-## Questions?
-
-If you have any questions or need clarification on requirements,
-please don't hesitate to reach out. We prefer that you ask rather than
-make incorrect assumptions.
-
-## Time Management
-
-If you're running short on time:
-- Focus on core functionality first (store and retrieve)
-- A simple but working solution is better than an incomplete complex one
-- Document what you would do with more time
-- Don't worry about edge cases or production-readiness
-- Consider our time, too.  We certainly love a good and polished
-  submission, but our the time we can spend on reviewing each of them
-  is limited.
-
-Good luck, and we look forward to reviewing your solution!
+- To extend this project: add more tests, improved searching, and server-side price computations.
+- For questions about specific implementation points, inspect the linked files above, starting from [InvoicesController](http://_vscodecontentref_/41) and [PostgresInvoicesStorageAdapter](http://_vscodecontentref_/42).
